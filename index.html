@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="玻纤复合材料太赫兹图像条纹去噪、灰度增强与缺陷分割。图片在浏览器本地处理。">
+  <meta name="referrer" content="no-referrer">
+  <title>Denoising · 太赫兹图像条纹去噪系统</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230c6863'/%3E%3Cpath d='M15 19h16c22 0 22 26 0 26H15z' fill='none' stroke='white' stroke-width='6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script src="processing.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="./"><span class="brand-icon">D</span>Denoising <span class="version">WEB PREVIEW</span></a><span class="privacy"><i></i>图片本地处理 · 无需安装</span></header>
+  <main>
+    <section class="intro"><div><p class="eyebrow">TERAHERTZ IMAGE LAB</p><h1>让条纹退去，让缺陷显现。</h1><p class="subtitle">玻纤复合材料的太赫兹图像条纹去噪系统</p></div><button id="helpBtn" class="button quiet">使用说明 ↗</button></section>
+    <section class="upload-bar" id="dropzone" aria-label="图像导入区">
+      <div class="upload-icon" aria-hidden="true">↥</div><div class="upload-copy"><strong id="fileName">从一张太赫兹图像开始</strong><span id="fileMeta">选择或拖入 PNG、JPEG、BMP、WebP 图像。最大 20 MB、200 万像素。</span></div>
+      <input type="file" id="fileInput" accept="image/png,image/jpeg,image/bmp,image/webp" class="sr-only">
+      <button id="chooseBtn" class="button">导入图像</button><button id="demoBtn" class="button quiet">试用演示图</button>
+    </section>
+    <div class="workspace">
+      <aside class="sidebar">
+        <form id="settings">
+          <section class="control-section"><div class="section-heading"><span class="step">01</span><h2>条纹去噪</h2></div>
+            <label class="field">滤波器<select id="algorithm"><option value="sector">十字扇形滤波器</option><option value="artifact">非标准条纹伪影滤波器</option></select></label>
+            <div id="sectorControls">
+              <label class="slider-field"><span>横条纹角度 <output for="horizontalAngle">10°</output></span><input id="horizontalAngle" type="range" min="0" max="30" value="10" step="1"></label>
+              <label class="slider-field"><span>纵条纹角度 <output for="verticalAngle">10°</output></span><input id="verticalAngle" type="range" min="0" max="30" value="10" step="1"></label>
+              <div class="field-row"><label class="field">横向次峰偏移<input id="horizontalOffset" type="number" min="0" max="30" step="1" value="10"></label><label class="field">纵向次峰偏移<input id="verticalOffset" type="number" min="0" max="30" step="1" value="10"></label></div>
+            </div>
+            <div id="artifactControls" hidden><label class="field">f1 · 衰减系数<input id="f1" type="number" min="0" max="1" step="0.000001" value="0.00001"></label><label class="field">f2 · 频率系数<input id="f2" type="number" min="0" max="1" step="0.000001" value="0.0001"></label><label class="field">θ · 方向参数<input id="theta" type="number" min="0" max="1" step="0.01" value="0.5"></label></div>
+          </section>
+          <section class="control-section"><div class="section-heading"><span class="step">02</span><h2>区域灰度增强</h2></div><p class="hint">每个区域独立设置输入灰度区间（0–1）。</p>
+            <div class="quadrants">
+              <fieldset><legend>左上</legend><input aria-label="左上灰度下限" id="q0lo" type="number" min="0" max="1" step="0.01" value="0"><span>—</span><input aria-label="左上灰度上限" id="q0hi" type="number" min="0" max="1" step="0.01" value="1"></fieldset>
+              <fieldset><legend>右上</legend><input aria-label="右上灰度下限" id="q1lo" type="number" min="0" max="1" step="0.01" value="0"><span>—</span><input aria-label="右上灰度上限" id="q1hi" type="number" min="0" max="1" step="0.01" value="1"></fieldset>
+              <fieldset><legend>左下</legend><input aria-label="左下灰度下限" id="q2lo" type="number" min="0" max="1" step="0.01" value="0"><span>—</span><input aria-label="左下灰度上限" id="q2hi" type="number" min="0" max="1" step="0.01" value="1"></fieldset>
+              <fieldset><legend>右下</legend><input aria-label="右下灰度下限" id="q3lo" type="number" min="0" max="1" step="0.01" value="0"><span>—</span><input aria-label="右下灰度上限" id="q3hi" type="number" min="0" max="1" step="0.01" value="1"></fieldset>
+            </div>
+          </section>
+          <section class="control-section"><div class="section-heading"><span class="step">03</span><h2>缺陷分割与统计</h2></div>
+            <div class="field-row"><label class="field">中值滤波行数<input id="medianRows" type="number" min="1" max="9" step="1" value="3"></label><label class="field">中值滤波列数<input id="medianCols" type="number" min="1" max="9" step="1" value="3"></label></div>
+            <label class="field">结构元素<select id="shape"><option value="disk">圆盘（参数为半径）</option><option value="square">正方形（参数为边长）</option></select></label>
+            <div class="field-row"><label class="field">开运算大小<input id="openSize" type="number" min="0" max="100" step="1" value="1"></label><label class="field">闭运算大小<input id="closeSize" type="number" min="0" max="100" step="1" value="1"></label></div>
+            <div class="field-row"><label class="field">最小连通面积（px）<input id="minArea" type="number" min="0" max="2097152" step="1" value="100"></label><label class="field">去小区域连通方式<select id="connectivity"><option value="8">8 邻域</option><option value="4">4 邻域</option></select></label></div>
+            <label class="field">像素标定（mm / px，可选）<input id="mmPerPixel" type="number" min="0" max="1000" step="any" placeholder="未标定时按像素统计"></label>
+            <label class="check"><input type="checkbox" id="invertMask">反转最终分割图，并重新统计</label>
+            <p class="hint">基于反色 + Otsu 阈值分割。统计的是候选区域，需结合原图核验。</p>
+          </section>
+          <div class="run-area"><button type="submit" id="runBtn" class="button primary" disabled>运行分析 <span>→</span></button><button type="button" id="resetBtn" class="reset">恢复默认参数</button></div>
+        </form>
+      </aside>
+      <section class="results" aria-label="处理结果">
+        <div class="results-heading"><div><p class="eyebrow">ANALYSIS WORKSPACE</p><h2>图像分析工作台</h2></div><span id="stateBadge" class="state-badge">等待导入</span></div>
+        <div id="status" class="status" role="status" aria-live="polite">导入图像，或使用演示图体验完整流程。</div>
+        <div class="image-grid">
+          <article class="image-card"><div class="card-head"><h3><span>01</span>原始图像</h3><span class="image-tag">INPUT</span></div><div class="canvas-wrap"><canvas id="originalCanvas" hidden></canvas><div class="placeholder"><span class="placeholder-icon">▧</span>原始太赫兹图像</div></div><div class="card-foot"><span id="originalNote">支持彩色图像，处理时转换为灰度</span><button class="download" data-canvas="originalCanvas" disabled aria-label="下载原始灰度图">↓ PNG</button></div></article>
+          <article class="image-card"><div class="card-head"><h3><span>02</span>去噪图像</h3><span class="image-tag">DENOISED</span></div><div class="canvas-wrap"><canvas id="denoisedCanvas" hidden></canvas><div class="placeholder"><span class="placeholder-icon">≋</span>滤除条纹后的图像</div></div><div class="card-foot"><span>保留输入图像尺寸</span><button class="download" data-canvas="denoisedCanvas" disabled aria-label="下载去噪图像">↓ PNG</button></div></article>
+          <article class="image-card"><div class="card-head"><h3><span>03</span>灰度增强</h3><span class="image-tag">ENHANCED</span></div><div class="canvas-wrap"><canvas id="enhancedCanvas" hidden></canvas><div class="placeholder"><span class="placeholder-icon">◐</span>四区域灰度变换</div></div><div class="card-foot"><span>分区调整对比度</span><button class="download" data-canvas="enhancedCanvas" disabled aria-label="下载灰度增强图">↓ PNG</button></div></article>
+          <article class="image-card"><div class="card-head"><h3><span>04</span>缺陷分割</h3><span class="image-tag">SEGMENTED</span></div><div class="canvas-wrap"><canvas id="maskCanvas" hidden></canvas><div class="placeholder"><span class="placeholder-icon">⊙</span>候选缺陷二值图</div></div><div class="card-foot"><span>白色区域计入缺陷统计</span><button class="download" data-canvas="maskCanvas" disabled aria-label="下载缺陷分割图">↓ PNG</button></div></article>
+        </div>
+        <section class="metrics" aria-label="统计指标"><div><span>候选缺陷数量</span><strong id="countMetric">—</strong><small>个 · 8 邻域连通区域</small></div><div><span>缺陷总面积</span><strong id="areaMetric">—</strong><small id="areaUnit">px · 尚未标定</small></div><div><span>缺陷面积占比</span><strong id="ratioMetric">—</strong><small>占图像总像素</small></div><div><span>处理耗时</span><strong id="timeMetric">—</strong><small>秒 · 当前设备</small></div></section>
+        <div class="export-row"><p>图片仅在当前浏览器内计算，刷新页面后清除。</p><button id="reportBtn" class="button" disabled>导出分析记录 ↓</button></div>
+        <p class="migration-note">网页版为原 MATLAB 工程的迁移预览，包含边界与单位修正，尚未完成与原软件的逐像素一致性验证。<button id="compatBtn">查看说明</button></p>
+      </section>
+    </div>
+    <footer><span>DENOISING / 玻纤复合材料太赫兹图像分析</span><span>浏览器计算 · 图片不上传</span></footer>
+  </main>
+  <dialog id="helpDialog"><div class="dialog-header"><h2>使用说明</h2><button id="closeHelp" aria-label="关闭说明">×</button></div>
+    <ol><li>导入一张 PNG、JPEG、BMP 或 WebP 图像，或点击“试用演示图”。演示图是合成数据，不是真实实验结果。</li><li>选择滤波器，调节参数。角度为 0 表示跳过对应方向的滤波；复杂图像可能找不到次峰，此时会显示提示。</li><li>四个区域的灰度区间默认均为 [0, 1]，表示不额外改变对比度。</li><li>点击“运行分析”，查看四幅图与候选缺陷统计。参数变更后需要重新运行。</li><li>按各图的“PNG”按钮保存图像；“导出分析记录”保存参数、统计与版本说明。</li></ol>
+    <h3>面积标定</h3><p>仅在已知图像的实际空间分辨率时填写 mm / px；未填写时只显示像素面积。本版假设横纵像素尺寸相同。分割图的白色区域视为候选缺陷，请结合原始数据判断。</p>
+    <h3>与 MATLAB 原版的关系</h3><p>根据 app1.mlapp 迁移两种频域滤波、分区灰度调整、中值滤波、Otsu 阈值、开闭运算及连通区域统计。矩形图像越界、未找到次峰及零频谱等情况作了保护。圆盘使用离散欧氏圆盘，可能与 MATLAB 默认的近似圆盘不同；灰度转换、图像解码及浮点计算也可能带来差异。非标准滤波器保留原源码中的频域乘法顺序。尚未完成 MATLAB 逐像素对照，不应据此宣称与原版数值等价。</p>
+    <p>适用现代桌面浏览器；最大 20 MB、单边 2048 像素、总像素约 200 万。大图和较大的形态学参数可能耗时更长。当前不读取 TIFF、MAT、原始太赫兹波形或高位深数据；请先转换成 8 位图像。</p>
+  </dialog>
+</body>
+</html>
